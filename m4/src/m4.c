@@ -28,7 +28,12 @@ void SendData( const char * cmd, char * resp, const int timeout, bool debug) {
 
 	long int time = Millis();
 
-	while( (time + timeout) > Millis() ) {
+	while( 1 ) {
+		if( (time + timeout) < Millis() ) {
+			printf("\nTimed out\n");
+			break;
+		}
+
 		while( UART_Available()  ) {
 			char c = UART_Read();
 			*resp = c;
@@ -36,9 +41,14 @@ void SendData( const char * cmd, char * resp, const int timeout, bool debug) {
 		}
 
 		if( strstr( resp, "OK") != NULL || strstr( resp, "FAIL") != NULL ) {
+			//*resp = '\0';
 			break;
 		}
 	}
+
+
+
+	//*resp = '\0';
 
 
 	if( debug )
@@ -69,20 +79,24 @@ int main(void) {
     // TODO: insert code here
 
     UART_Init( 9600 );
+
     Millis_Start();
 
 
 
 
     bool s = false;
-    char resp[500];
+    //char * resp = (char*) calloc(sizeof(char), 500);
+    char resp[1000];
 
-    printf("Mandando CWLAP");
-    SendData( "AT+CWLAP\r\n", (char *)&resp, 3000, false );
-    printf("Recebido: \n");
-    printf("%s", resp);
 
     while(1) {
+
+        printf("Mandando CWLAP");
+        SendData( "AT+CWLAP\r\n", (char *) &resp[0], 15000, false );
+        printf("Recebido: \n");
+        printf("%s", resp);
+
 
 
     	//UART_Send( resp, strlen(resp) );
@@ -90,7 +104,7 @@ int main(void) {
 
 //    	UART_Send( teste, sizeof(teste));
 
-    	for( int i = 0; i < 99999999; i ++) {
+    	for( int i = 0; i < 9999999; i ++) {
 
     	}
     	s = !s;

@@ -8,23 +8,38 @@
 ===============================================================================
 */
 
-#if defined (__USE_LPCOPEN)
-#if defined(NO_BOARD_LIB)
-#include "chip.h"
-#else
+
 #include "board.h"
-#endif
-#endif
+
 
 #include <cr_section_macros.h>
 
-// TODO: insert other include files here
+#include "string.h"
 
-// TODO: insert other definitions and declarations here
+
+#include "ipc_cfg.h"
+#include "lcd_st7565s.h"
+#include "lpc_rom8x8.h"
+
+static char *IPC = (char *) SHARED_MEM_IPC;
 
 #if defined (M0_SLAVE_PAUSE_AT_MAIN)
 volatile unsigned int pause_at_main;
 #endif
+
+#define NEW_LINE_H 10
+
+
+void PrintLine(const char * str) {
+	LCD_PutStrXY(1, NEW_LINE_H, str );
+}
+
+void M4_IRQHandler(void) {
+	Chip_CREG_ClearM4Event();
+
+	PrintLine( IPC );
+
+}
 
 int main(void) {
 
@@ -33,27 +48,30 @@ int main(void) {
     while (pause_at_main == 0) {}
 #endif
 
-#if defined (__USE_LPCOPEN)
     // Read clock settings and update SystemCoreClock variable
     SystemCoreClockUpdate();
-#if !defined(NO_BOARD_LIB)
-#if defined (__MULTICORE_MASTER) || defined (__MULTICORE_NONE)
-    // Set up and initialize all required blocks and
-    // functions related to the board hardware
-    Board_Init();
-#endif
-    // Set the LED to the state of "On"
+
+    NVIC_EnableIRQ(M4_IRQn);
+
     Board_LED_Set(0, true);
-#endif
-#endif
 
-    // TODO: insert code here
 
-    // Force the counter to be placed into memory
-    volatile static int i = 0 ;
-    // Enter an infinite loop, just incrementing a counter
+    Board_LCD_Init();
+    LCD_Init();
+    LCD_SetFontColor(1);
+    LCD_SetFontBgColor(0);
+    LCD_SetFont(&font_rom8x8);
+
+
+    char str[] = "SMEP v0.1";
+    int x_center = (LCD_X_RES - strlen(str)*8) / 2;
+
+    LCD_PutStrXY(x_center, 1, str );
+
+    PrintLine("Iniciando..");
+
     while(1) {
-        i++ ;
+        __WFI(); // Wait for interrupts
     }
     return 0 ;
 }
