@@ -31,12 +31,12 @@ void UART_IntDisable() {
 	Chip_UART_IntDisable( LPC_UART, (UART_IER_RBRINT | UART_IER_RLSINT) );
 }
 
-void UART_Send(const void * data, int numBytes ) {
-	Chip_UART_SendBlocking( LPC_UART, data, numBytes );
+int UART_Send(const void * data, int numBytes ) {
+	return Chip_UART_SendBlocking( LPC_UART, data, numBytes );
 }
 
-void UART_Send( String cmd ) {
-	UART_Send( cmd.c_str(), cmd.length() );
+int UART_Send( String cmd ) {
+	return UART_Send( cmd.c_str(), cmd.length() );
 }
 
 uint8_t UART_Read() {
@@ -68,7 +68,10 @@ void UARTx_IRQHandler(void)
 				receiveBuffer = receiveBuffer.substring( MAX_BUFFER_SIZE / 2); // Discard half of the contents
 
 			while( UART_Available() ) {
-				receiveBuffer += (char) UART_Read();
+				char data = (char) UART_Read();
+				receiveBuffer += data;
+				//Chip_UART_SendByte( LPC_UART, data);
+
 			}
 
 			break;
@@ -81,10 +84,11 @@ void UARTx_IRQHandler(void)
 			printf("Unkown %d", INTID);
 	}
 
-	/*if( recv ) {
+	if( recv ) {
 		printf("UART_IRQ:");
 		printf( receiveBuffer );
-		receiveBuffer = "";
-	}*/
+		if( receiveBuffer.length() > 200)
+		 receiveBuffer = "";
+	}
 
 }

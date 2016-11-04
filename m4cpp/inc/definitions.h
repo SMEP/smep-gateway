@@ -14,20 +14,26 @@
 
 #define UNIT_ID 1
 
-#define SERVER_IP 	String("10.0.0.9")
+#define SERVER_IP 	String("192.168.1.225")
 #define SERVER_PORT 8080
 #define SERVER_PATH	"/sample"
 
-#define AP_SSID "Raul"
-#define AP_PW	"raul10mb"
+#include "wifi_credentials.h"
+/*#define AP_SSID "your ssid"
+#define AP_PW	"your pwd"*/
 
-#define NTP_SERVER String("br.pool.ntp.org")
+#define NTP_SERVER 	String("pool.ntp.org")
+#define NTP_PORT 	123
 
 
 // Sampling
 
-#define ADC_CH ADC_CH3
-#define LPC_ADC LPC_ADC0
+#define ADC_CH_CURRENT	ADC_CH3
+#define LPC_ADC_CURRENT LPC_ADC0
+
+#define ADC_CH_VOLTAGE	ADC_CH2
+#define LPC_ADC_VOLTAGE LPC_ADC1
+
 
 #define NUM_AVG_PEAKS 3
 #define VOLT_REF 212
@@ -44,7 +50,7 @@
 
 
 // Global Variables
-extern char *IPC;
+extern char* const IPC;
 class ESP8266; // Forward implementation
 extern ESP8266 esp;
 

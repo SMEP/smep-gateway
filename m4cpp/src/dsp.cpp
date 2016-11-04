@@ -10,82 +10,109 @@
 #include "esp.h"
 
 
+#define N_CYCLES 100
 
-float sample_to_v(uint16_t sample ) {
+
+inline float sample_to_v(uint16_t sample ) {
 	return (float) (3.3 / (float) 1023) * sample;
 }
 
 
+void UpdatePeaks(uint16_t* target, uint16_t peak) {
+	for( uint16_t i = 0; i < NUM_AVG_PEAKS; i++) {
+		if( peak > target[i] ) {
+			for( uint16_t n = i; n < NUM_AVG_PEAKS-1; n++ ) {//do swaps
+				target[n + 1] = target[n];
+			}
+			target[ i ] = peak;
+			break;
+		}
+	}
+}
+
+void InvalidatePeak(uint16_t* target) {
+	// invalidate peak max
+	for( uint16_t n = NUM_AVG_PEAKS-1; n > 0; n-- ) {
+		target[n - 1] = target[n];
+	}
+	target[2] = 0;
+}
+
+float MeanPeaks(uint16_t* target) {
+	uint16_t sumMax = 0;
+
+	for( uint16_t i = 0; i < NUM_AVG_PEAKS; i++) {
+		sumMax += target[i];
+	}
+	
+	return (float) sumMax / NUM_AVG_PEAKS;
+}
+
 void StartAquisition() {
 	bool state = 0;
 
-	uint16_t read = 0;
-	float volt = 0;
-	float amp = 0;
-	float pot = 0;
+	uint16_t current = 0,
+			voltage = 0;
 
-	uint64_t peaksSum = 0;
-	uint64_t offsetSum = 0;
+	uint64_t currentPeaksSum = 0,
+			voltagePeaksSum = 0,
+			offsetSum = 0;
 
 
-	uint32_t sum = 0;
-	uint16_t maxes[NUM_AVG_PEAKS] = { 0 };
+	uint32_t sumCurrent = 0,
+			sumVoltage = 0;
+	
+	uint16_t peaksCurrent[NUM_AVG_PEAKS] = { 0 },
+			peaksVoltage[NUM_AVG_PEAKS] = { 0 };
 
 	uint32_t i = 0;
 	uint32_t cnt = 0;
 	while(1) {
-		read = ADC_Read();
-		sum += read;
+		ADC_RESULT result = ADC_Read();
+		current = result.current;
+		voltage = result.voltage;
+		
+		sumCurrent += current;
+		sumVoltage += voltage;
+		
+		
+		UpdatePeaks( peaksCurrent, current );
+		UpdatePeaks( peaksVoltage, voltage );
 
-		for( uint16_t i = 0; i < NUM_AVG_PEAKS; i++) {
-			if( read > maxes[i] ) {
-				for( uint16_t n = i; n < NUM_AVG_PEAKS-1; n++ ) {//do swaps
-					maxes[n + 1] = maxes[n];
-				}
-				maxes[ i ] = read;
-				break;
-			}
-		}
+		if( i == N_CYCLES) { // Each 6 complete cycles of the sine 60Hz
+			float meanCurrent = sumCurrent / N_CYCLES,
+				meanVoltage = sumVoltage / N_CYCLES;
 
-		volt = sample_to_v( read );
-		amp = AMP( volt );
-		pot = WATT ( amp );
+			float currentMax = MeanPeaks( peaksCurrent );
+			float voltageMax = MeanPeaks( peaksVoltage );
 
-		//printf("Lido %d %.6f V   AMP:  %.3f WATT: %.3f \n", read, volt, amp, pot);
 
-		if( i == 100) { // Each 6 complete cycles of the sine 60Hz
-			float mean = sum / 100;
+			float voltage = VOLTAGE( sample_to_v(voltageMax) );
 
-			uint16_t sumMax = 0;
-
-			for( uint16_t i = 0; i < NUM_AVG_PEAKS; i++) {
-				sumMax += maxes[i];
-			}
-
-			float meanMax = sumMax / 3;
-
-			float offset = sample_to_v(mean);
-			float peak = sample_to_v( meanMax );
+			float offset = sample_to_v(meanCurrent);
+			float peak = sample_to_v( currentMax );
 			float pp = peak - offset;
-			float power = WATT( AMP( pp ) );
+			float amp = AMP( pp );
+			float power = WATT( amp, voltage );
 
-			peaksSum += meanMax;
-			offsetSum += mean;
 
-			printf("Mean: %.2f %.4f V  %.2f MeanMax: %.4f PP: %.4f Power: %.3f\n", mean, offset, meanMax, peak, peak - offset, power );
+			currentPeaksSum += currentMax;
+			voltagePeaksSum += voltageMax;
+			offsetSum += meanCurrent;
 
-			sprintf(IPC, "POT: %.2f W", power );
+			printf("Mean: %.2f %.4f V  %.2f MeanMax: %.4f PP: %.4f Power: %.3f Voltage: %.4f %.4f \n", meanCurrent, offset, currentMax, peak, peak - offset, power,
+					voltageMax, voltage );
+
+			sprintf((char *)IPC, "POT: %.2f W \nVOLT: %.2f V \nAMP: %.2f A", power, voltage, amp);
 			ipc_send_signal(); // Send to M0 write to LCD
 
 			// Reset variables
-			sum = 0;
+			sumCurrent = sumVoltage =  0;
 			i = 0;
 
 			// invalidate peak max
-			for( uint16_t n = 2; n > 0; n-- ) {
-				maxes[n - 1] = maxes[n];
-			}
-			maxes[2] = 0;
+			InvalidatePeak(peaksCurrent);
+			InvalidatePeak(peaksVoltage);
 
 
 			cnt++;
@@ -93,21 +120,26 @@ void StartAquisition() {
 
 
 		if( cnt == SEND_THRESHOLD / 100 ) {
-			float mPks = peaksSum / cnt;
+			float mCurrentPks = currentPeaksSum / cnt;
+			float mVoltagePks = voltagePeaksSum / cnt;
 
-			float meanPeak = sample_to_v( mPks );
+			float meanCurrentPeak = sample_to_v( mCurrentPks );
+			float meanVoltagePeak = sample_to_v( mVoltagePks );
 			float meanOffset = sample_to_v( offsetSum / cnt );
 
-			float pp = meanPeak - meanOffset;
-			float meanPower = WATT( AMP( pp ));
+			float meanVoltage = VOLTAGE( meanVoltagePeak );
+
+			float pp = meanCurrentPeak - meanOffset;
+			float meanPower = WATT( AMP( pp ), voltage);
+
 
 
 			PostParameters params;
 			params["power"] = String( meanPower );
 			params["interval"] = MEAN_PW_INTERVAL_S;
 			params["offset"] = meanOffset;
-			params["voltage"] = VOLT_REF;
-			params["sample"] = mPks;
+			params["voltage"] = meanVoltage;
+			params["sample"] = mCurrentPks;
 
 
 			Chip_GPIO_SetPinState( LPC_GPIO_PORT, 1, 12, state);
@@ -120,13 +152,12 @@ void StartAquisition() {
 
 			esp.SendHTTPPost( SERVER_IP, SERVER_PORT, SERVER_PATH, params );
 
-			peaksSum = offsetSum = 0;
+			currentPeaksSum = offsetSum = 0;
 			cnt = 0;
 		}
 
 
 		i++;
-
 
 		Delay_ms( DELAY_MS_SAMPLES );
 	}

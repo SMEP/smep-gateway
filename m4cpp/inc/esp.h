@@ -26,6 +26,7 @@ public:
 	// ESP Specifics
 	void StartServer(uint16_t port);
 	void SetMux(bool state);
+	void SetBaud(uint32_t baud);
 	void Reset();
 
 	// ESP cmds/data routines
@@ -54,7 +55,7 @@ public:
 
 
 	// Application level
-	void NTPRequest(const String& ntpServer);
+	void NTPRequest(const String& ntpServer, const uint32_t port);
 };
 
 //typedef String StrCmd; // TODO: Test if it would work

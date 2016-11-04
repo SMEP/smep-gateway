@@ -10,15 +10,29 @@
 #include <string.h>
 
 
+bool M0Ready = false;
+
 inline void ipc_send_signal(void)
 {
+	M0Ready = false;
 	__DSB();
 	__SEV();
 }
 
-void WriteLCD(const char * msg) {
-	strcpy(IPC, msg);
+bool WriteLCD(const char * msg) {
+	if( !M0Ready ) {
+		printf("M0 Busy! Rejecting: %s", msg);
+		return false;
+	}
+	strcpy((char *)IPC, msg);
 	ipc_send_signal();
+
+	return true;
+}
+
+extern "C" void M0APP_IRQHandler(void) {
+	 Chip_CREG_ClearM0AppEvent();
+	 M0Ready = true;
 }
 
 

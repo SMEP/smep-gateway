@@ -1,6 +1,7 @@
 #include "esp.h"
 
 #include <cstdio>
+#include <ctime>
 
 #include "millis.h"
 #include "uart.h"
@@ -259,24 +260,49 @@ bool ESP8266::SendUDPPacket(uint8_t conID, uint8_t* packet, uint16_t size) {
 
 
 // TODO: finish
-void ESP8266::NTPRequest(const String& ntpServer) {
+void ESP8266::NTPRequest(const String& ntpServer, const uint32_t port) {
 	const uint8_t conId = 3;
 	uint8_t ntpData[48] = { 0 };
 	String resp;
+	struct NTPMessage msg;
+	msg.clear();
+	msg.version = 3;
+	msg.mode = 3;
+
+	struct NTPMessage * response = new (struct NTPMessage);
+	response->clear();
+
+	//msg.sendto();
+
 
 	ntpData[0] = 0x1B; // LI = 0 (no warning), VN = 3 (IPv4 only), Mode = 3 (Client Mode)
 
-	CreateUDPConnection( conId, ntpServer, 123, 123  );
+	CreateUDPConnection( conId, ntpServer, port, port  );
 
-	UART_IntDisable();
-	SendUDPPacket(conId, ntpData, 48);
-	ReadResponse( resp, 2000 );
+	//UART_IntDisable();
+	SendUDPPacket(conId, (uint8_t *)&msg, 48);
+	Delay_ms(10000);
+	//ReadResponse( resp, 2000 );
+	//msg.sendto();
 
 	const char * data = resp.c_str();
 	uint16_t offset = resp.indexOf("48:") + 3; // TODO: proper way to receive +IPD reqs
 
-	struct NTPMessage* ntpMsg = (struct NTPMessage*) (data + offset);
+	response = (struct NTPMessage*) (data + offset);
+	//response->ReverseEndian();
+
+	time_t t = response->tx.to_time_t();
+	char * s = ctime(&t);
+	printf("The tme is %s", s);
 
 
 	CloseConnection( conId );
+}
+
+void ESP8266::SetBaud(uint32_t baud) {
+	StrCmd cmd = "AT+CIOBAUD=";
+	cmd += baud;
+
+	SendData(cmd, 200);
+	UART_Init( baud );
 }

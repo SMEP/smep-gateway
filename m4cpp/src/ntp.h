@@ -7,6 +7,8 @@
 #ifndef NTP_H_
 #define NTP_H_
 
+#include <ctime>
+
 //http://stackoverflow.com/questions/13011532/get-time-date-from-server-with-sntpwindows-c
 
 #define ReverseEndianInt(x) ((x) = \
@@ -29,20 +31,14 @@ struct Timestamp
      * Network byte order is big endian, so it needs to be switched before
      * sending or reading.
      */
-    void ReverseEndian() {
-        ReverseEndianInt(seconds);
-        ReverseEndianInt(fraction);
-    }
+    void ReverseEndian();
 
     /**
      * Convert to time_t.
      * Returns the integer part of the timestamp in unix time_t format,
      * which is seconds since Jan 1, 1970.
      */
-    time_t to_time_t()
-    {
-        return (seconds - ((70 * 365 + 17) * 86400))&0x7fffffff;
-    }
+    time_t to_time_t();
 };
 
 /**
@@ -74,20 +70,15 @@ struct NTPMessage
      * Maintaining them in little endian makes them easier to work with
      * locally, though.
      */
-    void ReverseEndian() {
-        ref.ReverseEndian();
-        orig.ReverseEndian();
-        rx.ReverseEndian();
-        tx.ReverseEndian();
-    }
+    void ReverseEndian();
+    int recv();
+
+    int sendto();
 
     /**
      * Zero all the values.
      */
-    void clear()
-    {
-        memset(this, 0, sizeof(*this));
-    }
+    void clear();
 };
 
 #endif /* NTP_H_ */

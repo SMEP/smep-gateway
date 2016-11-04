@@ -9,8 +9,8 @@
 
 
 void UART_Init( const uint32_t baud );
-void UART_Send(const void * data, int numBytes );
-void UART_Send( String cmd );
+int UART_Send(const void * data, int numBytes );
+int UART_Send( String cmd );
 bool UART_Available();
 uint8_t UART_Read();
 void UART_IRQ_Init();

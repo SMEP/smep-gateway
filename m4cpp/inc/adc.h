@@ -7,9 +7,17 @@
 #ifndef ADC_H_
 #define ADC_H_
 
-#include "definitions.h"
+#include <stdint.h>
+
+typedef struct {
+	uint16_t current;
+	uint16_t voltage;
+} ADC_RESULT;
 
 void ADC_Init();
-uint16_t ADC_Read();
+ADC_RESULT ADC_Read();
+
+
+
 
 #endif /* ADC_H_ */
