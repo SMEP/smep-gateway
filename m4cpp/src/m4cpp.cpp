@@ -33,7 +33,7 @@ ESP8266 esp;
 
 
 
-void InitESP() {
+static void InitESP() {
 	 esp.SetMux( true );
 
 	 WriteLCD("Conectando AP");

@@ -14,7 +14,7 @@
 
 #define UNIT_ID 1
 
-#define SERVER_IP 	String("192.168.1.225")
+#define SERVER_IP 	String("10.0.0.218")
 #define SERVER_PORT 8080
 #define SERVER_PATH	"/sample"
 

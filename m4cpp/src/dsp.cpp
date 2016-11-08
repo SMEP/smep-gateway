@@ -130,12 +130,12 @@ void StartAquisition() {
 			float meanVoltage = VOLTAGE( meanVoltagePeak );
 
 			float pp = meanCurrentPeak - meanOffset;
-			float meanPower = WATT( AMP( pp ), voltage);
+			float meanPower = WATT( AMP( pp ), meanVoltage);
 
 
 
 			PostParameters params;
-			params["power"] = String( meanPower );
+			params["power"] = meanPower;
 			params["interval"] = MEAN_PW_INTERVAL_S;
 			params["offset"] = meanOffset;
 			params["voltage"] = meanVoltage;
@@ -152,7 +152,7 @@ void StartAquisition() {
 
 			esp.SendHTTPPost( SERVER_IP, SERVER_PORT, SERVER_PATH, params );
 
-			currentPeaksSum = offsetSum = 0;
+			currentPeaksSum = offsetSum = voltagePeaksSum = 0;
 			cnt = 0;
 		}
 
